@@ -14,6 +14,7 @@ load_dotenv()
 DB_HOST = os.getenv("DB_HOST")
 DB_NAME = os.getenv("DB_NAME")
 DB_TABLE = os.getenv("DB_TABLE")
+DB_COLUMN = os.getenv("DB_COLUMN")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_PORT = os.getenv("DB_PORT")
@@ -24,8 +25,8 @@ engine = create_engine(connection).execution_options(autocommit=True)
 
 df = pd.read_sql_query(f"select * from {DB_TABLE}", con=engine)
 
-# Drop rows with NaN values (NULL)
-df.dropna(inplace=True)
+# Include only rows where column is not NaN (NULL)
+df = df[df[DB_COLUMN].notna()]
 
 # Update data back to the database
 df.to_sql(DB_TABLE, con=engine, if_exists="replace", index=False)
