@@ -5,8 +5,7 @@
 # Author / Project Owner: KafetzisThomas (https://github.com/KafetzisThomas)
 
 import os
-import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Table, MetaData, delete
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,14 +20,17 @@ DB_PORT = os.getenv("DB_PORT")
 
 connection = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-engine = create_engine(connection).execution_options(autocommit=True)
+engine = create_engine(connection)
+metadata = MetaData()
+metadata.reflect(bind=engine)
+table = Table(DB_TABLE, metadata, autoload=True, autoload_with=engine)
 
-df = pd.read_sql_query(f"select * from {DB_TABLE}", con=engine)
+# Create a delete statement to remove rows where column is null (None)
+delete_stmt = delete(table).where(table.c[DB_COLUMN].is_(None))
 
-# Include only rows where column is not NaN (NULL)
-df = df[df[DB_COLUMN].notna()]
+with engine.connect() as connection:
+    result = connection.execute(delete_stmt)
+    connection.commit()
+    print(f"Deleted {result.rowcount} rows from {DB_TABLE} where {DB_COLUMN} was NULL.")
 
-# Update data back to the database
-df.to_sql(DB_TABLE, con=engine, if_exists="replace", index=False)
-
-print(df.to_string())
+print("Database table cleanup completed.")
